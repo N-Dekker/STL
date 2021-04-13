@@ -1,12 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-#include <assert.h>
+#include <cassert>
 #include <concepts>
+#include <cstdio>
+#include <exception>
 #include <format>
 #include <optional>
-#include <stdio.h>
 #include <string_view>
+#include <type_traits>
 
 #include "test_format_support.hpp"
 
@@ -22,14 +24,14 @@ bool test_parse_align() {
     view_typ s3(TYPED_LITERAL(CharT, "*^"));
 
     test_parse_helper(parse_align_fn, s1, false, view_typ::npos,
-        {.expected_alignment = _Align::_Left, .expected_fill = view_typ(TYPED_LITERAL(CharT, "*"))});
+        {.expected_alignment = _Fmt_align::_Left, .expected_fill = view_typ(TYPED_LITERAL(CharT, "*"))});
     test_parse_helper(parse_align_fn, s2, false, view_typ::npos,
-        {.expected_alignment = _Align::_Right, .expected_fill = view_typ(TYPED_LITERAL(CharT, "*"))});
+        {.expected_alignment = _Fmt_align::_Right, .expected_fill = view_typ(TYPED_LITERAL(CharT, "*"))});
     test_parse_helper(parse_align_fn, s3, false, view_typ::npos,
-        {.expected_alignment = _Align::_Center, .expected_fill = view_typ(TYPED_LITERAL(CharT, "*"))});
+        {.expected_alignment = _Fmt_align::_Center, .expected_fill = view_typ(TYPED_LITERAL(CharT, "*"))});
 
     if constexpr (same_as<CharT, wchar_t>) {
-        // This is a CJK character where the least significant byte is the same as ascii '>',
+        // This is a CJK character where the least significant byte is the same as ASCII '>',
         // libfmt and initial drafts of <format> narrowed characters when parsing alignments, causing
         // \x343E (which is from CJK unified ideographs extension A) and similar characters to parse as
         // an alignment specifier.
@@ -39,28 +41,28 @@ bool test_parse_align() {
         // test multi-code-unit fill characters
         {
             test_parse_helper(parse_align_fn, L"\U0001F3C8<X"sv, false, 3,
-                {.expected_alignment = _Align::_Left, .expected_fill = L"\U0001F3C8"sv});
+                {.expected_alignment = _Fmt_align::_Left, .expected_fill = L"\U0001F3C8"sv});
             test_parse_helper(parse_align_fn, L"\U0001F3C8>X"sv, false, 3,
-                {.expected_alignment = _Align::_Right, .expected_fill = L"\U0001F3C8"sv});
+                {.expected_alignment = _Fmt_align::_Right, .expected_fill = L"\U0001F3C8"sv});
             test_parse_helper(parse_align_fn, L"\U0001F3C8^X"sv, false, 3,
-                {.expected_alignment = _Align::_Center, .expected_fill = L"\U0001F3C8"sv});
+                {.expected_alignment = _Fmt_align::_Center, .expected_fill = L"\U0001F3C8"sv});
         }
     } else {
         // test multibyte fill characters
-#ifndef MSVC_INTERNAL_TESTING // TRANSITION, Windows on Contest VMs understand ".UTF-8" codepage
+#ifndef MSVC_INTERNAL_TESTING // TRANSITION, the Windows version on Contest VMs doesn't always understand ".UTF-8"
         {
-            setlocale(LC_ALL, ".UTF-8");
+            assert(setlocale(LC_ALL, ".UTF-8") != nullptr);
             // "\xf0\x9f\x8f\x88" is U+1F3C8 AMERICAN FOOTBALL
             test_parse_helper(parse_align_fn, "\xf0\x9f\x8f\x88<X"sv, false, 5,
-                {.expected_alignment = _Align::_Left, .expected_fill = "\xf0\x9f\x8f\x88"sv});
+                {.expected_alignment = _Fmt_align::_Left, .expected_fill = "\xf0\x9f\x8f\x88"sv});
             test_parse_helper(parse_align_fn, "\xf0\x9f\x8f\x88>X"sv, false, 5,
-                {.expected_alignment = _Align::_Right, .expected_fill = "\xf0\x9f\x8f\x88"sv});
+                {.expected_alignment = _Fmt_align::_Right, .expected_fill = "\xf0\x9f\x8f\x88"sv});
             test_parse_helper(parse_align_fn, "\xf0\x9f\x8f\x88^X"sv, false, 5,
-                {.expected_alignment = _Align::_Center, .expected_fill = "\xf0\x9f\x8f\x88"sv});
+                {.expected_alignment = _Fmt_align::_Center, .expected_fill = "\xf0\x9f\x8f\x88"sv});
         }
 #endif // MSVC_INTERNAL_TESTING
 
-        setlocale(LC_ALL, nullptr);
+        assert(setlocale(LC_ALL, "C") != nullptr);
     }
 
     return true;
@@ -165,28 +167,28 @@ bool test_parse_format_specs() {
     view_typ s6(TYPED_LITERAL(CharT, "*^+#04.4La}"));
     test_parse_helper(parse_format_specs_fn, s0, false, s0.size() - 1, {.expected_width = 6});
     test_parse_helper(parse_format_specs_fn, s1, false, s1.size(),
-        {.expected_alignment = _Align::_Left,
+        {.expected_alignment = _Fmt_align::_Left,
             .expected_fill   = view_typ(TYPED_LITERAL(CharT, "*")),
             .expected_width  = 6});
     test_parse_helper(parse_format_specs_fn, s2, false, s2.size() - 1,
-        {.expected_alignment = _Align::_Right,
+        {.expected_alignment = _Fmt_align::_Right,
             .expected_fill   = view_typ(TYPED_LITERAL(CharT, "*")),
             .expected_width  = 6});
     test_parse_helper(parse_format_specs_fn, s3, false, s3.size() - 1,
-        {.expected_alignment = _Align::_Center,
+        {.expected_alignment = _Fmt_align::_Center,
             .expected_fill   = view_typ(TYPED_LITERAL(CharT, "*")),
             .expected_width  = 6});
     test_parse_helper(parse_format_specs_fn, s4, false, s4.size() - 1, {.expected_width = 6, .expected_type = 'd'});
     test_parse_helper(parse_format_specs_fn, s5, false, s5.size() - 1,
-        {.expected_alignment    = _Align::_Center,
-            .expected_sign      = _Sign::_Plus,
+        {.expected_alignment    = _Fmt_align::_Center,
+            .expected_sign      = _Fmt_sign::_Plus,
             .expected_fill      = view_typ(TYPED_LITERAL(CharT, "*")),
             .expected_width     = 4,
             .expected_precision = 4,
             .expected_type      = 'a'});
     test_parse_helper(parse_format_specs_fn, s6, false, s6.size() - 1,
-        {.expected_alignment    = _Align::_Center,
-            .expected_sign      = _Sign::_Plus,
+        {.expected_alignment    = _Fmt_align::_Center,
+            .expected_sign      = _Fmt_sign::_Plus,
             .expected_fill      = view_typ(TYPED_LITERAL(CharT, "*")),
             .expected_width     = 4,
             .expected_precision = 4,
@@ -215,7 +217,7 @@ constexpr bool test_specs_checker() {
     return true;
 }
 
-int main() {
+void test() {
     test_parse_align<char>();
     test_parse_align<wchar_t>();
 
@@ -240,6 +242,16 @@ int main() {
     test_specs_checker<wchar_t>();
     static_assert(test_specs_checker<char>());
     static_assert(test_specs_checker<wchar_t>());
+}
 
-    return 0;
+int main() {
+    try {
+        test();
+    } catch (const format_error& e) {
+        printf("format_error: %s\n", e.what());
+        assert(false);
+    } catch (const exception& e) {
+        printf("exception: %s\n", e.what());
+        assert(false);
+    }
 }

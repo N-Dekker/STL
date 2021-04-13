@@ -31,7 +31,7 @@ struct choose_literal<wchar_t> {
 
 template <typename CharT>
 struct noop_testing_callbacks {
-    constexpr void _On_align(std::_Align) {}
+    constexpr void _On_align(std::_Fmt_align) {}
     constexpr void _On_fill(std::basic_string_view<CharT>) {}
     constexpr void _On_width(unsigned int) {}
     constexpr void _On_dynamic_width(std::size_t) {}
@@ -39,7 +39,7 @@ struct noop_testing_callbacks {
     constexpr void _On_precision(unsigned int) {}
     constexpr void _On_dynamic_precision(std::size_t) {}
     constexpr void _On_dynamic_precision(std::_Auto_id_tag) {}
-    constexpr void _On_sign(std::_Sign) {}
+    constexpr void _On_sign(std::_Fmt_sign) {}
     constexpr void _On_hash() {}
     constexpr void _On_zero() {}
     constexpr void _On_localized() {}
@@ -48,8 +48,8 @@ struct noop_testing_callbacks {
 
 template <typename CharT>
 struct testing_callbacks {
-    std::_Align expected_alignment = std::_Align::_None;
-    std::_Sign expected_sign       = std::_Sign::_None;
+    std::_Fmt_align expected_alignment = std::_Fmt_align::_None;
+    std::_Fmt_sign expected_sign       = std::_Fmt_sign::_None;
     std::basic_string_view<CharT> expected_fill;
     int expected_width                     = -1;
     std::size_t expected_dynamic_width     = static_cast<std::size_t>(-1);
@@ -62,7 +62,7 @@ struct testing_callbacks {
     bool expected_localized                = false;
     CharT expected_type                    = '\0';
 
-    constexpr void _On_align(std::_Align aln) {
+    constexpr void _On_align(std::_Fmt_align aln) {
         assert(aln == expected_alignment);
     }
     constexpr void _On_fill(std::basic_string_view<CharT> str_view) {
@@ -86,7 +86,7 @@ struct testing_callbacks {
     constexpr void _On_dynamic_precision(std::_Auto_id_tag) {
         assert(expected_auto_dynamic_precision);
     }
-    constexpr void _On_sign(std::_Sign sgn) {
+    constexpr void _On_sign(std::_Fmt_sign sgn) {
         assert(sgn == expected_sign);
     }
     constexpr void _On_hash() {
@@ -103,7 +103,7 @@ struct testing_callbacks {
     }
 };
 template <typename CharT>
-testing_callbacks(std::_Align, std::basic_string_view<CharT>) -> testing_callbacks<CharT>;
+testing_callbacks(std::_Fmt_align, std::basic_string_view<CharT>) -> testing_callbacks<CharT>;
 
 struct testing_arg_id_callbacks {
     constexpr void _On_auto_id() {}
